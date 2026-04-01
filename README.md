@@ -1,12 +1,26 @@
 # .github
 
-Default [community health files](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/creating-a-default-community-health-file) for all **jonathanperis** repositories.
+> Organization-wide GitHub configuration — shared policies, templates, and community health files
 
-## Included
+---
 
-- `CODE_OF_CONDUCT.md` — Contributor Covenant v2.1
-- `CONTRIBUTING.md` — Contribution guidelines
-- `SECURITY.md` — Vulnerability reporting policy
-- `.github/FUNDING.yml` — Sponsorship links
-- `.github/ISSUE_TEMPLATE/` — Bug report and feature request forms
-- `.github/pull_request_template.md` — Pull request template
+## About
+
+This repository provides shared configuration and community health files for all repositories in the jonathanperis organization. Files placed here apply automatically to any repository in the org that does not have its own version.
+
+## Contents
+
+| File | Purpose |
+|------|---------|
+| CODE_OF_CONDUCT.md | Contributor code of conduct |
+| CONTRIBUTING.md | Contribution guidelines |
+| SECURITY.md | Security policy and vulnerability reporting |
+| SUPPORT.md | Where to get help |
+| LICENSE | MIT License |
+| .github/FUNDING.yml | Sponsorship links |
+| .github/ISSUE_TEMPLATE/ | Issue templates |
+| .github/pull_request_template.md | Pull request template |
+
+## License
+
+MIT — see [LICENSE](LICENSE)
