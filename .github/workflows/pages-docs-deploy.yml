@@ -1,0 +1,111 @@
+# Reusable workflow: Deploy a static docs site to GitHub Pages
+#
+# Used by: rinha2-back-end-{go,rust,dotnet,python,k6}, super-mango-editor,
+# speedy-bird-lynx, blazor-mudblazor-starter, cpnucleo, jonathanperis.github.io
+#
+# Consumer template:
+#
+#     name: Deploy to GitHub Pages
+#     on:
+#       push: { branches: [main] }
+#       workflow_dispatch:
+#     permissions:
+#       pages: write
+#       id-token: write
+#       contents: read
+#     jobs:
+#       deploy:
+#         uses: jonathanperis/.github/.github/workflows/pages-docs-deploy.yml@main
+#         secrets: inherit
+#
+# Optional inputs cover edge cases (e.g. project root, output folder).
+
+name: Reusable — Deploy docs to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Folder containing package.json (default `docs`)
+        type: string
+        default: docs
+      output-path:
+        description: Folder under working-directory to upload as Pages artifact (default `out`)
+        type: string
+        default: out
+      package-manager:
+        description: '`bun` (recommended) or `npm`'
+        type: string
+        default: bun
+      node-version:
+        description: Node version when package-manager is `npm`
+        type: string
+        default: '22'
+      cancel-in-progress:
+        description: Whether to cancel in-flight deploys when a new one queues
+        type: boolean
+        default: false
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: ${{ inputs.cancel-in-progress }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+
+      # Bun (preferred) — matches CLAUDE.md convention for Pages projects
+      - if: inputs.package-manager == 'bun'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - if: inputs.package-manager == 'bun'
+        name: Install dependencies (bun)
+        run: bun install --frozen-lockfile
+        working-directory: ${{ inputs.working-directory }}
+
+      - if: inputs.package-manager == 'bun'
+        name: Build (bun)
+        run: bun run build
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          NODE_ENV: production
+          PUBLIC_GA_ID: ${{ secrets.PUBLIC_GA_ID }}
+
+      # Fallback: npm (if a repo hasn't migrated yet)
+      - if: inputs.package-manager == 'npm'
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - if: inputs.package-manager == 'npm'
+        name: Install dependencies (npm)
+        run: npm ci
+        working-directory: ${{ inputs.working-directory }}
+
+      - if: inputs.package-manager == 'npm'
+        name: Build (npm)
+        run: npm run build
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          NODE_ENV: production
+          PUBLIC_GA_ID: ${{ secrets.PUBLIC_GA_ID }}
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ inputs.working-directory }}/${{ inputs.output-path }}
+      - id: deployment
+        uses: actions/deploy-pages@v5
