@@ -1,0 +1,71 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "schedule:weekly",
+    ":automergeMinor",
+    ":automergePatch",
+    ":automergeDigest",
+    ":prHourlyLimit2",
+    ":prConcurrentLimit10"
+  ],
+  "labels": ["dependencies"],
+  "commitMessagePrefix": "chore(deps):",
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"]
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": true,
+    "schedule": "at any time"
+  },
+  "packageRules": [
+    {
+      "description": "Group GitHub Actions bumps",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "automerge": true
+    },
+    {
+      "description": "Group all .NET / Microsoft / OpenTelemetry NuGet packages",
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["/^Microsoft\\./", "/^OpenTelemetry\\./", "/^Azure\\./"],
+      "groupName": "dotnet-msft-otel"
+    },
+    {
+      "description": "Group .NET test packages",
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["xunit", "/^xunit\\./", "Moq", "/^Moq\\./", "FluentAssertions", "coverlet.collector", "Microsoft.NET.Test.Sdk"],
+      "groupName": "dotnet-testing"
+    },
+    {
+      "description": "Group Lynx packages",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["/^@lynx-js\\//"],
+      "groupName": "lynx"
+    },
+    {
+      "description": "Group Astro stack",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["astro", "/^@astrojs\\//", "tailwindcss", "/^@tailwindcss\\//"],
+      "groupName": "astro-tailwind"
+    },
+    {
+      "description": "Pin major bumps to require manual review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major"]
+    }
+  ],
+  "postUpdateOptions": ["bunInstall"],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.git/**"
+  ]
+}
