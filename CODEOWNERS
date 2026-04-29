@@ -1,0 +1,11 @@
+# Default code owner for all files in this repository.
+#
+# NOTE: GitHub does NOT cascade CODEOWNERS from the org-level `.github` repo
+# to other repositories — unlike SECURITY.md, CONTRIBUTING.md, and other
+# community health files, CODEOWNERS is repo-scoped only. To enforce code
+# ownership in another repo, copy this file (or a tailored version) to that
+# repo's root, `.github/`, or `docs/` directory.
+#
+# Reference: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @jonathanperis
