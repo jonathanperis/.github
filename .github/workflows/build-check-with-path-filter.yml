@@ -1,0 +1,44 @@
+# Reusable workflow: detect if a PR touches build-relevant paths.
+# Consumers wire job-level `if:` to skip heavy builds on docs-only changes.
+#
+# Consumer template:
+#
+#     jobs:
+#       changes:
+#         uses: jonathanperis/.github/.github/workflows/build-check-with-path-filter.yml@main
+#         with:
+#           paths: |
+#             src/**
+#             go.mod
+#             go.sum
+#       build:
+#         needs: changes
+#         if: github.event_name != 'pull_request' || needs.changes.outputs.relevant == 'true'
+#         ...
+
+name: Reusable — Path filter for build relevance
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: Newline-separated glob list. Touching any of these → relevant=true.
+        type: string
+        required: true
+    outputs:
+      relevant:
+        description: 'true' if PR touches any path in the list
+        value: ${{ jobs.filter.outputs.relevant }}
+
+jobs:
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.changes.outputs.src }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              ${{ inputs.paths }}
