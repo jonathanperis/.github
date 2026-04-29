@@ -17,8 +17,6 @@
 #       deploy:
 #         uses: jonathanperis/.github/.github/workflows/pages-docs-deploy.yml@main
 #         secrets: inherit
-#
-# Optional inputs cover edge cases (e.g. project root, output folder).
 
 name: Reusable — Deploy docs to GitHub Pages
 
@@ -38,7 +36,7 @@ on:
         type: string
         default: bun
       node-version:
-        description: Node version when package-manager is `npm`
+        description: Node version (used for both bun and npm modes; Astro 6+ needs >=22)
         type: string
         default: '22'
       cancel-in-progress:
@@ -63,7 +61,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Bun (preferred) — matches CLAUDE.md convention for Pages projects
+      # Always set up Node — Astro 6+ (and many other tools) check
+      # process.versions.node and reject Bun's embedded Node 20.
+      # Builds run via Node; bun is used only for the dependency install
+      # to keep CLAUDE.md convention.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      # Bun (preferred installer)
       - if: inputs.package-manager == 'bun'
         uses: oven-sh/setup-bun@v2
         with:
@@ -74,16 +80,8 @@ jobs:
         run: bun install --frozen-lockfile
         working-directory: ${{ inputs.working-directory }}
 
-      - if: inputs.package-manager == 'bun'
-        name: Build (bun)
-        run: bun run build
-        working-directory: ${{ inputs.working-directory }}
-        env:
-          NODE_ENV: production
-          PUBLIC_GA_ID: ${{ secrets.PUBLIC_GA_ID }}
-
-      # Fallback: npm (if a repo hasn't migrated yet)
       - if: inputs.package-manager == 'npm'
+        name: Cache npm dependencies
         uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version }}
@@ -95,8 +93,8 @@ jobs:
         run: npm ci
         working-directory: ${{ inputs.working-directory }}
 
-      - if: inputs.package-manager == 'npm'
-        name: Build (npm)
+      # Build always runs via Node (npm scripts find executables in node_modules/.bin)
+      - name: Build
         run: npm run build
         working-directory: ${{ inputs.working-directory }}
         env:
