@@ -64,7 +64,7 @@ jobs:
       # Always set up Node — Astro 6+ (and many other tools) check
       # process.versions.node and reject Bun's embedded Node 20.
       # Builds run via Node; bun is used only for the dependency install
-      # to keep CLAUDE.md convention.
+      # to keep the standardized AGENTS.md convention.
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version }}
