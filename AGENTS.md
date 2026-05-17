@@ -1,4 +1,4 @@
-# .github — Claude Code Guide
+# .github — Agent Guide
 
 Organization-wide default community health files for all jonathanperis repositories. Files here are inherited by repos that don't have their own.
 
