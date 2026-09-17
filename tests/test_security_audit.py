@@ -84,11 +84,15 @@ class SecurityAuditTests(unittest.TestCase):
     def test_protection_presence_does_not_substitute_for_pr_or_security_gates(self):
         now = datetime.now(timezone.utc)
         classic = {"required_linear_history": {"enabled": True}, "required_status_checks": {"checks": [{"context": "build"}]},
-                   "allow_deletions": {"enabled": False}, "allow_force_pushes": {"enabled": False}}
+                   "allow_deletions": {"enabled": False}, "allow_force_pushes": {"enabled": False},
+                   "enforce_admins": {"enabled": True}}
         snapshot = {"archived": False, "classic": classic, "rules": []}
         controls = {item["control"] for item in audit.findings_for(snapshot, now)}
         self.assertTrue({"pull-requests", "security-gate", "review-conversations"}.issubset(controls))
         self.assertFalse({"force-push", "branch-deletion", "linear-history", "required-ci"} & controls)
+        classic["enforce_admins"]["enabled"] = False
+        controls = {item["control"] for item in audit.findings_for(snapshot, now)}
+        self.assertTrue({"force-push", "branch-deletion", "linear-history", "required-ci"}.issubset(controls))
 
     def test_stale_scans_and_urgent_findings_survive_other_healthy_signals(self):
         now = datetime.now(timezone.utc)

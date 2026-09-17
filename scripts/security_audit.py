@@ -147,6 +147,9 @@ def findings_for(snapshot, now):
     classic = snapshot.get("classic")
     rules = snapshot.get("rules")
     if classic is not None and rules is not None:
+        # Only count classic controls that also constrain administrators.
+        if classic and not classic.get("enforce_admins", {}).get("enabled"):
+            classic = {}
         by_type = {rule["type"]: rule for rule in rules}
         pr = by_type.get("pull_request", {}).get("parameters", {})
         require("pull_request" in by_type or classic.get("required_pull_request_reviews") is not None,
@@ -200,12 +203,17 @@ def findings_for(snapshot, now):
                      and "refs/tags/v*" in ruleset.get("conditions", {}).get("ref_name", {}).get("include", [])
                      and not ruleset.get("conditions", {}).get("ref_name", {}).get("exclude")]
         require(any({"deletion", "non_fast_forward"}.issubset({rule["type"] for rule in ruleset.get("rules", [])})
-                    and not ruleset.get("bypass_actors") for ruleset in tag_rules),
+                    and "bypass_actors" in ruleset and not ruleset["bypass_actors"] for ruleset in tag_rules),
                 "release-tags", "Protect release tags against replacement/deletion without bypasses")
+        if any("bypass_actors" not in ruleset for ruleset in tag_rules):
+            finding("unknown", "release-tags", "Release-tag bypass actors were not returned")
         active_ids = {rule["ruleset_id"] for rule in snapshot.get("rules", []) if "ruleset_id" in rule}
         for ruleset in snapshot["rulesets"]:
             if ruleset.get("id") in active_ids:
-                require(not ruleset.get("bypass_actors"), "branch-bypass", "Default-branch rules must not have routine bypass actors")
+                if "bypass_actors" not in ruleset:
+                    finding("unknown", "branch-bypass", "Ruleset bypass actors were not returned")
+                else:
+                    require(not ruleset["bypass_actors"], "branch-bypass", "Default-branch rules must not have routine bypass actors")
     if "reporting" in snapshot:
         require(snapshot["reporting"].get("enabled") is True, "private-reporting", "Enable private vulnerability reporting")
     if "updates" in snapshot:
@@ -308,7 +316,7 @@ def collect(repository):
     read("immutable", "/immutable-releases")
     read("reporting", "/private-vulnerability-reporting")
     read("updates", "/automated-security-fixes")
-    read("workflows", "/actions/workflows?per_page=100", projection=".workflows | map({path,state})")
+    read("workflows", "/actions/workflows?per_page=100", projection=".workflows | map({path,state})", paginate=True)
     read("analyses", f"/code-scanning/analyses?ref=refs/heads/{branch}&per_page=100",
          projection="map({category,created_at,error})", absent=[], paginate=True)
     read("dependency_alerts", "/dependabot/alerts?state=open&per_page=100",
@@ -320,14 +328,14 @@ def collect(repository):
     read("collaborators", "/collaborators?affiliation=all&per_page=100", projection="map({login})", paginate=True)
     read("runners", "/actions/runners", projection=".total_count")
     read("environments", "/environments?per_page=100",
-         projection=".environments | map({name,deployment_branch_policy,can_admins_bypass})")
+         projection=".environments | map({name,deployment_branch_policy,can_admins_bypass})", paginate=True)
     for environment in snapshot.get("environments", []):
         protected = environment["name"].startswith("production") or environment["name"] in ("github-pages", "security-audit")
         if protected and (environment.get("deployment_branch_policy") or {}).get("custom_branch_policies"):
             name = quote(environment["name"], safe="")
             try:
                 environment["allowed_refs"] = api(base + f"/environments/{name}/deployment-branch-policies?per_page=100",
-                                                  projection=".branch_policies | map({name,type})")
+                                                  projection=".branch_policies | map({name,type})", paginate=True)
             except ApiError as error:
                 snapshot["unavailable"]["environment-refs:" + environment["name"]] = error.status
     return snapshot
