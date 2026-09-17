@@ -92,6 +92,12 @@ def findings_for(snapshot, now):
             finding("warn", "archived-secrets", f"{snapshot['secret_count']} retained repository secret entries")
         return findings
 
+    if "pull_requests_enabled" in snapshot:
+        if snapshot["pull_requests_enabled"] is None:
+            finding("unknown", "pull-request-feature", "Pull request availability was not returned")
+        else:
+            require(snapshot["pull_requests_enabled"], "pull-request-feature", "Enable pull requests before requiring them")
+
     security = snapshot.get("security")
     if security is None and "security" not in snapshot.get("unavailable", {}):
         finding("unknown", "security", "Security settings omitted; verify token permissions")
@@ -222,7 +228,11 @@ def collect(repository):
     read("secret_count", "/actions/secrets", projection=".total_count")
     if repository["archived"]:
         return snapshot
-    read("security", projection=".security_and_analysis")
+    read("security", projection="{has_pull_requests,security_and_analysis}")
+    if "security" in snapshot:
+        settings = snapshot["security"]
+        snapshot["pull_requests_enabled"] = settings["has_pull_requests"]
+        snapshot["security"] = settings["security_and_analysis"]
     branch = quote(repository["default_branch"], safe="")
     read("classic", f"/branches/{branch}/protection", absent={})
     read("rules", f"/rules/branches/{branch}")
