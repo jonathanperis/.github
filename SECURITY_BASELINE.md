@@ -4,7 +4,7 @@ This account uses per-repository security settings. The public `.github` reposit
 
 ## Active repositories
 
-- Require pull requests, resolved conversations, linear history, and the repository's verified PR checks on the default branch. Block force pushes and deletion, including routine administrator bypasses.
+- Enable pull requests for the intended contributors before requiring them. Require PRs, resolved conversations, linear history, and the repository's verified PR checks on the default branch. Block force pushes and deletion, including routine administrator bypasses.
 - Require CodeQL findings review at the high/critical security threshold. An analysis upload succeeding is not a clean security result.
 - Scan the application's supported languages and GitHub Actions on PRs, default-branch pushes, and weekly. Investigate disabled workflows and analyses older than 14 days.
 - Enable secret scanning, push protection, private vulnerability reporting, Dependabot alerts, and healthy security-update automation.

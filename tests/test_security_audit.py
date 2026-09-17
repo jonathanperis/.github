@@ -13,7 +13,7 @@ spec.loader.exec_module(audit)
 class SecurityAuditTests(unittest.TestCase):
     def test_healthy_baseline_passes_and_missing_security_settings_do_not(self):
         now = datetime.now(timezone.utc)
-        snapshot = {"repo": "jonathanperis/jonathanperis", "archived": False,
+        snapshot = {"repo": "jonathanperis/jonathanperis", "archived": False, "pull_requests_enabled": True,
                     "security": {key: {"status": "enabled"} for key in ("secret_scanning", "secret_scanning_push_protection")},
                     "classic": {}, "rules": [
                         {"type": "pull_request", "parameters": {"required_review_thread_resolution": True}},
@@ -31,6 +31,9 @@ class SecurityAuditTests(unittest.TestCase):
                                   "rules": [{"type": "deletion"}, {"type": "non_fast_forward"}]}],
                     "collaborators": [{"login": "jonathanperis"}], "secret_alerts": [], "dependency_alerts": [], "code_alerts": []}
         self.assertEqual([], audit.findings_for(snapshot, now))
+        snapshot["pull_requests_enabled"] = False
+        self.assertEqual(["pull-request-feature"], [item["control"] for item in audit.findings_for(snapshot, now)])
+        snapshot["pull_requests_enabled"] = True
         snapshot["security"] = None
         self.assertEqual(["unknown"], [item["level"] for item in audit.findings_for(snapshot, now)])
 
