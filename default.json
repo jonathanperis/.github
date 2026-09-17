@@ -64,7 +64,6 @@
       "labels": ["dependencies", "major"]
     }
   ],
-  "postUpdateOptions": ["bunInstall"],
   "ignorePaths": [
     "**/node_modules/**",
     "**/dist/**",
