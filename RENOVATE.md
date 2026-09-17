@@ -22,10 +22,12 @@ This `.github` repo hosts the **shared Renovate preset** at `default.json`. Ever
 - **Semantic-commit messages** (`chore(deps): bump foo to 1.2.3`)
 - **Dependency Dashboard** issue per repo (single source of truth)
 - **Weekly schedule** with `lockFileMaintenance` Monday before 5am
-- **Auto-merge** for: patch, minor, digest, github-actions, vulnerability alerts
-- **Manual review** required for: major bumps
+- **Auto-merge** for ordinary patch, minor, and digest updates after required CI passes
+- **Manual review** for major bumps, GitHub Actions updates, and vulnerability-alert PRs
+- **Three-day release age** for routine updates; security-alert PRs are raised immediately
+- **Full commit pins** for GitHub Actions, maintained by Renovate
 - **Group rules**:
-  - `github-actions` — all action bumps in one PR
+  - `github-actions` — pinned action updates grouped into a reviewable PR
   - `dotnet-msft-otel` — Microsoft.* + OpenTelemetry.* + Azure.*
   - `dotnet-testing` — xunit, Moq, FluentAssertions, coverlet, Test.Sdk
   - `lynx` — all `@lynx-js/*` packages

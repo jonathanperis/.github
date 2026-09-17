@@ -1,1 +1,3 @@
 .DS_Store
+.specs/
+__pycache__/
