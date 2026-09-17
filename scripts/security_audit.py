@@ -89,7 +89,7 @@ def findings_for(snapshot, now):
 
     if snapshot["archived"]:
         if snapshot.get("secret_count", 0):
-            finding("warn", "archived-secrets", f"{snapshot['secret_count']} retained repository secret entries")
+            finding("warn", "archived-secrets", "Archived repository retains Actions secret entries")
         return findings
 
     if "pull_requests_enabled" in snapshot:
