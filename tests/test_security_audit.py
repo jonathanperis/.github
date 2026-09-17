@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
+from contextlib import redirect_stdout
 import importlib.util
+import io
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -11,6 +13,21 @@ spec.loader.exec_module(audit)
 
 
 class SecurityAuditTests(unittest.TestCase):
+    def test_cli_reports_findings_without_serializing_credential_payloads(self):
+        marker = "synthetic-canary-value"
+        repository = {"full_name": "jonathanperis/archived", "owner": {"login": "jonathanperis"}, "archived": True}
+        snapshot = {"repo": repository["full_name"], "archived": True, "secret_count": 2,
+                    "secret_alerts": [{"number": 7, "secret": marker}]}
+        for arguments in ([], ["--json"]):
+            with self.subTest(arguments=arguments), patch.object(audit.sys, "argv", ["security_audit.py", *arguments]), \
+                    patch.object(audit, "api", return_value=[repository]), patch.object(audit, "collect", return_value=snapshot):
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    status = audit.main()
+                self.assertEqual(1, status)
+                self.assertIn("secret-alerts", output.getvalue())
+                self.assertNotIn(marker, output.getvalue())
+
     def test_healthy_baseline_passes_and_missing_security_settings_do_not(self):
         now = datetime.now(timezone.utc)
         snapshot = {"repo": "jonathanperis/jonathanperis", "archived": False, "pull_requests_enabled": True,
