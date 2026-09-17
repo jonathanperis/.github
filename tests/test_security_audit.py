@@ -35,10 +35,17 @@ class SecurityAuditTests(unittest.TestCase):
                     "classic": {}, "rules": [
                         {"type": "pull_request", "parameters": {"required_review_thread_resolution": True}},
                         {"type": "deletion"}, {"type": "non_fast_forward"}, {"type": "required_linear_history"},
-                        {"type": "required_status_checks", "parameters": {"required_status_checks": [{"context": "build"}]}},
+                        {"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": True,
+                            "required_status_checks": [{"context": "Markdown Lint", "integration_id": 15368},
+                                                       {"context": "Analyze", "integration_id": 15368},
+                                                       {"context": "CodeQL", "integration_id": 57789}]}},
                         {"type": "code_scanning", "parameters": {"code_scanning_tools": [
                             {"tool": "CodeQL", "security_alerts_threshold": "high_or_higher"}]}}],
                     "actions": {"sha_pinning_required": True, "allowed_actions": "selected"},
+                    "selected_actions": {"github_owned_allowed": True, "verified_allowed": False,
+                                         "patterns_allowed": ["DavidAnson/markdownlint-cli2-action@*", "Platane/snk@*",
+                                                              "crazy-max/ghaction-github-pages@*"]},
+                    "fork_approval": {"approval_policy": "all_external_contributors"},
                     "token_permissions": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": False},
                     "immutable": {"enabled": True}, "reporting": {"enabled": True}, "updates": {"enabled": True, "paused": False},
                     "workflows": [{"path": ".github/workflows/codeql.yml", "state": "active"}],
@@ -53,6 +60,17 @@ class SecurityAuditTests(unittest.TestCase):
         snapshot["pull_requests_enabled"] = True
         snapshot["security"] = None
         self.assertEqual(["unknown"], [item["level"] for item in audit.findings_for(snapshot, now)])
+
+    def test_standard_rejects_broad_actions_and_untrusted_check_sources(self):
+        now = datetime.now(timezone.utc)
+        snapshot = {"repo": "jonathanperis/jonathanperis", "archived": False, "classic": {}, "rules": [
+                    {"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": True,
+                     "required_status_checks": [{"context": name, "integration_id": 123}
+                                                for name in ("Markdown Lint", "Analyze", "CodeQL")]}}],
+                    "selected_actions": {"github_owned_allowed": True, "verified_allowed": False, "patterns_allowed": ["*"]},
+                    "fork_approval": {"approval_policy": "first_time_contributors"}}
+        controls = {item["control"] for item in audit.findings_for(snapshot, now)}
+        self.assertTrue({"required-ci-coverage", "action-allowlist", "fork-approval"}.issubset(controls))
 
     def test_unavailable_scanning_is_not_clean_and_archives_are_distinct(self):
         now = datetime.now(timezone.utc)
@@ -86,6 +104,7 @@ class SecurityAuditTests(unittest.TestCase):
         for name, kind, trusted in (("main", "branch", True), ("*", "branch", False), ("main", "tag", False)):
             with self.subTest(name=name, kind=kind):
                 snapshot = {"archived": False, "environments": [{"name": "production-hostinger",
+                            "can_admins_bypass": False,
                             "deployment_branch_policy": {"custom_branch_policies": True, "protected_branches": False},
                             "allowed_refs": [{"name": name, "type": kind}]}]}
                 self.assertEqual(not trusted, any(item["control"] == "production-environment"
