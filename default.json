@@ -14,21 +14,24 @@
   "labels": ["dependencies"],
   "commitMessagePrefix": "chore(deps):",
   "rangeStrategy": "bump",
+  "minimumReleaseAge": "3 days",
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 5am on monday"]
   },
   "vulnerabilityAlerts": {
     "labels": ["security"],
-    "automerge": true,
+    "automerge": false,
+    "minimumReleaseAge": "0 days",
     "schedule": "at any time"
   },
   "packageRules": [
     {
-      "description": "Group GitHub Actions bumps",
+      "description": "Pin GitHub Actions and review workflow updates",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions",
-      "automerge": true
+      "pinDigests": true,
+      "automerge": false
     },
     {
       "description": "Group all .NET / Microsoft / OpenTelemetry NuGet packages",
