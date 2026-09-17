@@ -21,6 +21,42 @@ REQUIRED_LANGUAGES = {
     "super-mango-editor": {"actions", "c-cpp"},
 }
 ALLOWED_COLLABORATORS = {"jonathanperis/super-mango-editor": {"fersantos"}}
+ALLOWED_ACTIONS = {
+    ".github": {"dependabot/fetch-metadata@*", "oven-sh/setup-bun@*"},
+    "blazor-mudblazor-starter": {"aquasecurity/trivy-action@*", "docker/build-push-action@*", "docker/login-action@*",
+                               "docker/setup-buildx-action@*", "docker/setup-qemu-action@*", "oven-sh/setup-bun@*",
+                               "jonathanperis/.github/.github/workflows/pages-docs-deploy.yml@*"},
+    "cpnucleo": {"codecov/codecov-action@*", "docker/build-push-action@*", "docker/login-action@*",
+                 "docker/setup-buildx-action@*", "docker/setup-qemu-action@*", "oven-sh/setup-bun@*",
+                 "jonathanperis/.github/.github/workflows/pages-docs-deploy.yml@*"},
+    "jonathanperis": {"DavidAnson/markdownlint-cli2-action@*", "Platane/snk@*", "crazy-max/ghaction-github-pages@*"},
+    "jonathanperis.github.io": {"oven-sh/setup-bun@*"},
+    "solar-system-simulator": {"mymindstorm/setup-emsdk@*"},
+    "speedy-bird-lynx": {"gradle/actions@*", "oven-sh/setup-bun@*", "softprops/action-gh-release@*",
+                         "jonathanperis/.github/.github/workflows/pages-docs-deploy.yml@*"},
+    "super-mango-editor": {"msys2/setup-msys2@*", "mymindstorm/setup-emsdk@*", "oven-sh/setup-bun@*",
+                           "softprops/action-gh-release@*"},
+}
+REQUIRED_CHECKS = {
+    ".github": {"Security policy", "Analyze (actions)", "Analyze (python)", "CodeQL"},
+    "blazor-mudblazor-starter": {"setup-build-test", "container-test", "docs", "infrastructure", "dependency-review",
+                               "Analyze (csharp)", "Analyze (javascript-typescript)", "Analyze (actions)", "CodeQL"},
+    "cpnucleo": {"Documentation and dependency audit", "Analyze (csharp)", "Analyze (javascript-typescript)",
+                 "Analyze (actions)", "CodeQL"} | {
+                     f"{job} ({service})" for job in ("Setup, Build & Test", "Container Healthcheck Test")
+                     for service in ("WebApi", "GrpcServer", "IdentityApi", "WebClient")},
+    "jonathanperis": {"Markdown Lint", "Analyze", "CodeQL"},
+    "jonathanperis.github.io": {"build", "analyze", "Analyze (actions)", "CodeQL"},
+    "solar-system-simulator": {"Native C/raylib build and tests", "WebAssembly artifact", "Astro docs and Pages artifact checks",
+                               "Analyze (c-cpp)", "Analyze (javascript-typescript)", "Analyze (actions)", "CodeQL"},
+    "speedy-bird-lynx": {"build", "android", "docs", "Analyze (javascript-typescript)", "Analyze (actions)", "CodeQL"},
+    "super-mango-editor": {"Build (Linux x86_64)", "Build (macOS arm64)", "Build (Windows x86_64)", "Build (WebAssembly)",
+                           "Analyze (c-cpp)", "Analyze (actions)", "CodeQL"},
+}
+
+
+def check_app_id(context):
+    return 57789 if context == "CodeQL" else 15368
 
 
 class ApiError(RuntimeError):
@@ -72,6 +108,7 @@ def api(path, *, paginate=False, projection=None):
 def findings_for(snapshot, now):
     """Assess collected metadata; unavailable controls never count as passing."""
     findings = []
+    repo_name = snapshot.get("repo", "").rsplit("/", 1)[-1]
 
     def finding(level, control, detail):
         findings.append({"level": level, "control": control, "detail": detail})
@@ -97,6 +134,8 @@ def findings_for(snapshot, now):
             finding("unknown", "pull-request-feature", "Pull request availability was not returned")
         else:
             require(snapshot["pull_requests_enabled"], "pull-request-feature", "Enable pull requests before requiring them")
+    if "pr_creation_policy" in snapshot:
+        require(snapshot["pr_creation_policy"] == "all", "pr-creation-policy", "The shared standard permits public pull requests")
 
     security = snapshot.get("security")
     if security is None and "security" not in snapshot.get("unavailable", {}):
@@ -123,6 +162,14 @@ def findings_for(snapshot, now):
         checks = by_type.get("required_status_checks", {}).get("parameters", {}).get("required_status_checks", [])
         checks = checks or classic.get("required_status_checks", {}).get("checks", [])
         require(bool(checks), "required-ci", "Require the repository's verified PR checks")
+        strict = by_type.get("required_status_checks", {}).get("parameters", {}).get("strict_required_status_checks_policy")
+        require(strict or classic.get("required_status_checks", {}).get("strict"),
+                "ci-up-to-date", "Require checks against an up-to-date base branch")
+        if repo_name in REQUIRED_CHECKS:
+            trusted = {check["context"] for check in checks
+                       if check.get("integration_id", check.get("app_id")) == check_app_id(check["context"])}
+            missing = REQUIRED_CHECKS[repo_name] - trusted
+            require(not missing, "required-ci-coverage", "Missing trusted required checks: " + ", ".join(sorted(missing)))
         tools = by_type.get("code_scanning", {}).get("parameters", {}).get("code_scanning_tools", [])
         require(any(tool.get("tool") == "CodeQL" and tool.get("security_alerts_threshold") in
                     ("high_or_higher", "medium_or_higher", "all") for tool in tools),
@@ -134,6 +181,17 @@ def findings_for(snapshot, now):
     if "actions" in snapshot:
         require(snapshot["actions"].get("sha_pinning_required") is True, "action-pins", "Enforce full-SHA action pins")
         require(snapshot["actions"].get("allowed_actions") == "selected", "allowed-actions", "Restrict allowed Actions")
+    if "selected_actions" in snapshot:
+        selection = snapshot["selected_actions"]
+        if repo_name not in ALLOWED_ACTIONS:
+            finding("unknown", "action-allowlist", "Declare the required third-party Actions for this repository")
+        else:
+            require(selection.get("github_owned_allowed") is True and selection.get("verified_allowed") is False
+                    and set(selection.get("patterns_allowed", [])) == ALLOWED_ACTIONS[repo_name],
+                    "action-allowlist", "Action allowlist differs from the reviewed repository dependencies")
+    if "fork_approval" in snapshot:
+        require(snapshot["fork_approval"].get("approval_policy") == "all_external_contributors",
+                "fork-approval", "Require approval for all external contributor workflow runs")
     if "immutable" in snapshot:
         require(snapshot["immutable"].get("enabled") is True, "immutable-releases", "Enable release immutability")
     if "rulesets" in snapshot:
@@ -171,7 +229,6 @@ def findings_for(snapshot, now):
             if category not in latest:
                 latest[category] = analysis
         require(any("actions" in category for category in latest), "actions-analysis", "Actions-language analysis is missing")
-        repo_name = snapshot.get("repo", "").rsplit("/", 1)[-1]
         expected = REQUIRED_LANGUAGES.get(repo_name)
         if expected is None:
             finding("unknown", "language-coverage", "Declare required CodeQL languages for this repository")
@@ -199,11 +256,12 @@ def findings_for(snapshot, now):
         require(not unexpected, "collaborators", "Review unexpected collaborators: " + ", ".join(unexpected))
     if "environments" in snapshot:
         for environment in snapshot["environments"]:
-            if environment["name"].startswith("production"):
+            if environment["name"].startswith("production") or environment["name"] in ("github-pages", "security-audit"):
                 policy = environment.get("deployment_branch_policy") or {}
                 refs = environment.get("allowed_refs", [])
-                trusted = policy.get("protected_branches") or (policy.get("custom_branch_policies") and bool(refs)
-                           and all(ref.get("name") == "main" and ref.get("type") == "branch" for ref in refs))
+                trusted = (policy.get("custom_branch_policies") and bool(refs)
+                           and all(ref.get("name") == "main" and ref.get("type") == "branch" for ref in refs)
+                           and environment.get("can_admins_bypass") is False)
                 require(trusted, "production-environment", f"Unrestricted deployment environment: {environment['name']}")
     return findings
 
@@ -228,10 +286,11 @@ def collect(repository):
     read("secret_count", "/actions/secrets", projection=".total_count")
     if repository["archived"]:
         return snapshot
-    read("security", projection="{has_pull_requests,security_and_analysis}")
+    read("security", projection="{has_pull_requests,pull_request_creation_policy,security_and_analysis}")
     if "security" in snapshot:
         settings = snapshot["security"]
         snapshot["pull_requests_enabled"] = settings["has_pull_requests"]
+        snapshot["pr_creation_policy"] = settings["pull_request_creation_policy"]
         snapshot["security"] = settings["security_and_analysis"]
     branch = quote(repository["default_branch"], safe="")
     read("classic", f"/branches/{branch}/protection", absent={})
@@ -242,6 +301,9 @@ def collect(repository):
     except ApiError as error:
         snapshot["unavailable"]["rulesets"] = error.status
     read("actions", "/actions/permissions")
+    if snapshot.get("actions", {}).get("allowed_actions") == "selected":
+        read("selected_actions", "/actions/permissions/selected-actions")
+    read("fork_approval", "/actions/permissions/fork-pr-contributor-approval")
     read("token_permissions", "/actions/permissions/workflow")
     read("immutable", "/immutable-releases")
     read("reporting", "/private-vulnerability-reporting")
@@ -258,9 +320,10 @@ def collect(repository):
     read("collaborators", "/collaborators?affiliation=all&per_page=100", projection="map({login})", paginate=True)
     read("runners", "/actions/runners", projection=".total_count")
     read("environments", "/environments?per_page=100",
-         projection=".environments | map({name,deployment_branch_policy})")
+         projection=".environments | map({name,deployment_branch_policy,can_admins_bypass})")
     for environment in snapshot.get("environments", []):
-        if environment["name"].startswith("production") and (environment.get("deployment_branch_policy") or {}).get("custom_branch_policies"):
+        protected = environment["name"].startswith("production") or environment["name"] in ("github-pages", "security-audit")
+        if protected and (environment.get("deployment_branch_policy") or {}).get("custom_branch_policies"):
             name = quote(environment["name"], safe="")
             try:
                 environment["allowed_refs"] = api(base + f"/environments/{name}/deployment-branch-policies?per_page=100",

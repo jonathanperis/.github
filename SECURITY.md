@@ -18,4 +18,4 @@ I will acknowledge your report within 48 hours and aim to release a fix as soon 
 
 ## Supported Versions
 
-Only the latest version on the `main` branch of each repository is actively supported.
+Only the latest default-branch version of each non-archived repository is actively supported. Archived repositories are historical references and do not receive security updates. Report concerns about archived projects through private vulnerability reporting in this `.github` repository.
