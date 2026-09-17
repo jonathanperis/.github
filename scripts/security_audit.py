@@ -21,6 +21,11 @@ REQUIRED_LANGUAGES = {
     "super-mango-editor": {"actions", "c-cpp"},
 }
 ALLOWED_COLLABORATORS = {"jonathanperis/super-mango-editor": {"fersantos"}}
+# Preserve established analysis identities: renaming them leaves required
+# configurations behind in GitHub and prevents complete PR comparisons.
+ANALYSIS_CATEGORIES = {
+    "jonathanperis.github.io": {"javascript-typescript": ".github/workflows/codeql.yml:analyze"},
+}
 ALLOWED_ACTIONS = {
     ".github": {"dependabot/fetch-metadata@*", "oven-sh/setup-bun@*"},
     "blazor-mudblazor-starter": {"aquasecurity/trivy-action@*", "docker/build-push-action@*", "docker/login-action@*",
@@ -241,10 +246,12 @@ def findings_for(snapshot, now):
         if expected is None:
             finding("unknown", "language-coverage", "Declare required CodeQL languages for this repository")
         else:
-            actual = {category.rsplit("/language:", 1)[-1] for category in latest}
-            require(expected <= actual, "language-coverage", "Missing analysis languages: " + ", ".join(sorted(expected - actual)))
+            categories = {ANALYSIS_CATEGORIES.get(repo_name, {}).get(language, f"/language:{language}"): language
+                          for language in expected}
+            missing = {language for category, language in categories.items() if category not in latest}
+            require(not missing, "language-coverage", "Missing analysis languages: " + ", ".join(sorted(missing)))
         for category, analysis in latest.items():
-            if expected is not None and category not in {f"/language:{language}" for language in expected}:
+            if expected is not None and category not in categories:
                 continue  # Superseded analysis categories are not active scanner configurations.
             timestamp = datetime.fromisoformat(analysis["created_at"].replace("Z", "+00:00"))
             require(timestamp >= now - timedelta(days=14) and not analysis.get("error"),

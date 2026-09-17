@@ -103,6 +103,16 @@ class SecurityAuditTests(unittest.TestCase):
         self.assertTrue({"codeql-freshness", "dependency_alerts"}.issubset(controls))
         self.assertFalse({"codeql-workflow", "actions-analysis", "code_alerts"} & controls)
 
+    def test_existing_analysis_identity_is_required_for_complete_comparisons(self):
+        now = datetime.now(timezone.utc)
+        snapshot = {"repo": "jonathanperis/jonathanperis.github.io", "archived": False, "analyses": [
+                    {"category": ".github/workflows/codeql.yml:analyze", "created_at": now.isoformat(), "error": ""},
+                    {"category": "/language:actions", "created_at": now.isoformat(), "error": ""}]}
+        controls = {item["control"] for item in audit.findings_for(snapshot, now)}
+        self.assertFalse({"language-coverage", "codeql-freshness"} & controls)
+        snapshot["analyses"][0]["category"] = "/language:javascript-typescript"
+        self.assertIn("language-coverage", {item["control"] for item in audit.findings_for(snapshot, now)})
+
     def test_production_custom_ref_policy_rejects_wildcards_and_tags(self):
         now = datetime.now(timezone.utc)
         for name, kind, trusted in (("main", "branch", True), ("*", "branch", False), ("main", "tag", False)):
