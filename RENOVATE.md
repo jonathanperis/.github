@@ -32,7 +32,7 @@ This `.github` repo hosts the **shared Renovate preset** at `default.json`. Ever
   - `dotnet-testing` — xunit, Moq, FluentAssertions, coverlet, Test.Sdk
   - `lynx` — all `@lynx-js/*` packages
   - `astro-tailwind` — Astro + Tailwind ecosystem
-- **`bunInstall`** post-update hook so Bun lockfiles regenerate after bumps
+- **Native Bun lockfile support** and weekly lockfile maintenance; no unsupported `bunInstall` post-update option
 
 ## Migrating off Dependabot
 
