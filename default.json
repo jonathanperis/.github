@@ -40,11 +40,12 @@
       "groupName": "dotnet-msft-otel"
     },
     {
-      "description": "Move the .NET SDK pin (global.json), the SDK and ASP.NET container image tags, and the dotnet-ef tool together, and raise the PR promptly. CI picks up new SDK patches on its own, so a stale pin breaks locked-mode restores (NU1004) until the lock files are regenerated; this must not wait for the weekly schedule.",
+      "description": "Move the .NET SDK pin (global.json), the SDK and ASP.NET container image tags, and the dotnet-ef tool together, and raise the PR promptly. CI picks up new SDK patches on its own, so a stale pin breaks locked-mode restores (NU1004) until the lock files are regenerated; this must not wait for the weekly schedule. The MCR registry exposes no release timestamp to Renovate, so the release-age gate must treat a missing timestamp as optional or the image tags would never join the group.",
       "matchPackageNames": ["dotnet-sdk", "mcr.microsoft.com/dotnet/sdk", "mcr.microsoft.com/dotnet/aspnet", "dotnet-ef"],
       "groupName": "dotnet-toolchain",
       "schedule": ["at any time"],
       "minimumReleaseAge": "1 day",
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
       "automerge": false,
       "labels": ["dependencies", "dotnet-toolchain"],
       "prBodyNotes": [
