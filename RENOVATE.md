@@ -29,7 +29,7 @@ This `.github` repo hosts the **shared Renovate preset** at `default.json`. Ever
 - **Group rules**:
   - `github-actions` — pinned action updates grouped into a reviewable PR
   - `dotnet-msft-otel` — Microsoft.* + OpenTelemetry.* + Azure.*
-  - `dotnet-toolchain` — the `global.json` SDK pin, the `mcr.microsoft.com/dotnet/sdk` and `aspnet` image tags, and `dotnet-ef`, in one PR raised at any time (one day after release) and never auto-merged. GitHub's runners pick up new .NET patches on their own, so a stale pin breaks `dotnet restore --locked-mode` until `global.json`, the Dockerfile tags and the lock files move together.
+  - `dotnet-toolchain` — the `global.json` SDK pin, the `mcr.microsoft.com/dotnet/sdk` and `aspnet` image tags, and `dotnet-ef`, in one PR raised at any time (one day after release; images from `mcr.microsoft.com` have no release timestamp, so that gate is `timestamp-optional` for this group) and never auto-merged. GitHub's runners pick up new .NET patches on their own, so a stale pin breaks `dotnet restore --locked-mode` until `global.json`, the Dockerfile tags and the lock files move together.
   - `dotnet-testing` — xunit, Moq, FluentAssertions, coverlet, Test.Sdk
   - `lynx` — all `@lynx-js/*` packages
   - `astro-tailwind` — Astro + Tailwind ecosystem
