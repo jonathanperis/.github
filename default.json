@@ -40,6 +40,18 @@
       "groupName": "dotnet-msft-otel"
     },
     {
+      "description": "Move the .NET SDK pin (global.json), the SDK and ASP.NET container image tags, and the dotnet-ef tool together, and raise the PR promptly. CI picks up new SDK patches on its own, so a stale pin breaks locked-mode restores (NU1004) until the lock files are regenerated; this must not wait for the weekly schedule.",
+      "matchPackageNames": ["dotnet-sdk", "mcr.microsoft.com/dotnet/sdk", "mcr.microsoft.com/dotnet/aspnet", "dotnet-ef"],
+      "groupName": "dotnet-toolchain",
+      "schedule": ["at any time"],
+      "minimumReleaseAge": "1 day",
+      "automerge": false,
+      "labels": ["dependencies", "dotnet-toolchain"],
+      "prBodyNotes": [
+        "Regenerate the NuGet lock files with the new SDK before merging (`dotnet restore --force-evaluate`), and move `global.json`, the Dockerfile tags and the lock files together."
+      ]
+    },
+    {
       "description": "Group .NET test packages",
       "matchManagers": ["nuget"],
       "matchPackageNames": ["xunit", "/^xunit\\./", "Moq", "/^Moq\\./", "FluentAssertions", "coverlet.collector", "Microsoft.NET.Test.Sdk"],
